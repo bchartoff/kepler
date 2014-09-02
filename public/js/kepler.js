@@ -25,6 +25,7 @@ var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20
 // Astronomy.
 var G = 6.67384e-11; // m3 kg-1 s-2
 var SEC_PER_STEP = 8;
+var COMET_TIME_STEP = 31557600//86400 //seconds per day
 var STEPS_PER_FRAME = 10000;
 var METERS_PER_UNIT = 1000000000;
 var MAX_TRAIL_VERTICES = 400;
@@ -32,6 +33,8 @@ var MIN_GHOST_DISTANCE = 100;
 var GHOST_DISTANCE_SCALE = 80;
 var MAX_GHOST_OPACITY = 0.15;
 var PAUSED = false;
+var CURRENT_TIME = 0; //January 1st 2012 at midnight (start of day)
+var END_TIME = 126230400 //86400 * 365.25 * 4
 
 function createCamera() {
   camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
@@ -96,6 +99,12 @@ function getAcceleration(distance, starMass) {
 }
 
 function updateVelocity(planet, star) {
+  // console.log("type", planet.astro.type);
+  if (planet.astro.type == "comet"){
+    // console.log("FOOOO")
+    updateCometVelocity(planet,star);
+  }
+
   var vel = new THREE.Vector3();
   var speed;
   for(var i=0; i < STEPS_PER_FRAME; i++) {
@@ -111,6 +120,36 @@ function updateVelocity(planet, star) {
       leaveTrail(planet);
     }
   }
+}
+
+function updateCometVelocity(planet,star){
+  var vel = new THREE.Vector3();
+  var speed;
+  for(var i=0; i < STEPS_PER_FRAME; i++) {
+    interval = getInterval(planet);
+    // console.log(interval);
+  //  console.log(CURRENT_TIME, interval[0])
+    p1 = new THREE.Vector3(interval[0][0],interval[0][1],interval[0][2]);
+    p2 = new THREE.Vector3(interval[1][0],interval[1][1],interval[1][2]);
+    speed = (getDistance(p2,p1)*METERS_PER_UNIT/COMET_TIME_STEP) * SEC_PER_STEP;
+
+    vel.subVectors(p2,p1).setLength(speed/ METERS_PER_UNIT);
+    planet.astro.vel.add(vel);
+
+    planet.position.x += planet.astro.vel.x * SEC_PER_STEP;
+    planet.position.y += planet.astro.vel.y * SEC_PER_STEP;
+    planet.position.z += planet.astro.vel.z * SEC_PER_STEP;
+
+    if (i % 10000 === 0) {
+      leaveTrail(planet);
+    }
+  }
+
+}
+
+function getInterval(planet){
+  return [planet.astro.positions[((CURRENT_TIME % COMET_TIME_STEP) * COMET_TIME_STEP).toString()],
+  planet.astro.positions[(((CURRENT_TIME % COMET_TIME_STEP)+1) * COMET_TIME_STEP).toString()]]; 
 }
 
 function leaveTrail(sphere) {
@@ -171,6 +210,7 @@ var FOCUS, focusVec = new THREE.Vector3();
 
 function animate() {
   stats.begin();
+  if (CURRENT_TIME >= END_TIME){ PAUSED == true; }
 
   // render texture
   renderer.render(scene, camera);
@@ -182,6 +222,8 @@ function animate() {
     for (var i = 0; i < planets.length; i++) {
       orbit(planets[i], sun);
     }
+
+    CURRENT_TIME += SEC_PER_STEP;
 
     focusVec.subVectors(FOCUS.position, focusVec);
     camera.position.add(focusVec);
@@ -281,17 +323,27 @@ document.getElementById('form').onsubmit = function(e) {
 
 function simulateHome() {
   sun = addSphere(0.6955, 0, 0, 0, "bhushan.jpg", { mass: 1.988435e30 });
+  var dummy_data =
+  {
+    "0" : [227.94, 0, 0],
+    "31557600": [100, 0, 200],
+    "63115200": [ 0, 0, 300],
+    "94672800": [-100,0,400],
+    "126230400": [-200,0,500],
+    "157788000": [-300,0,600]
+  }
 
-  planets.push(addSphere(0.0024397, 50.32, 0, 0, "mercury.png", { mass: 3.30104e23, vel: new THREE.Vector3(0, 0, 4.74e-5) }));
-  planets.push(addSphere(0.0060519, 108.8, 0, 0, "mercury.png", { mass: 4.86732e24, vel: new THREE.Vector3(0, 0, 3.5e-5) }));
-  planets.push(addSphere(0.0063674447, 150, 0, 0, "planet.jpg", { mass: 5.9721986e24, vel: new THREE.Vector3(0, 0, 2.963e-5) }));
-  planets.push(addSphere(0.003386, 227.94, 0, 0, "planet.jpg", { mass: 6.41693e23, vel: new THREE.Vector3(0, 0, 0.0000228175) }));
-  planets.push(addSphere(0.069173, 778.33, 0, 0, "planet.jpg",  { mass: 1.89813e27, vel: new THREE.Vector3(0, 0, 0.0000129824) }));
-  planets.push(addSphere(0.057316, 1429.4, 0, 0, "planet.jpg",  { mass: 5.68319e26, vel: new THREE.Vector3(0, 0, 9.280e-6) }));
-  planets.push(addSphere(0.025266, 2870.99, 0, 0, "planet.jpg",  { mass: 8.68103e25, vel: new THREE.Vector3(0, 0, 6.509e-6) }));
-  planets.push(addSphere(0.024553, 4504, 0, 0, "planet.jpg",  { mass: 1.0241e26, vel: new THREE.Vector3(0, 0, 5.449e-6) }));
+  planets.push(addSphere(0.0024397, 50.32, 0, 0, "mercury.png", { type: "planet", mass: 3.30104e23, vel: new THREE.Vector3(0, 0, 4.74e-5) }));
+  planets.push(addSphere(0.0060519, 108.8, 0, 0, "mercury.png", { type: "planet", mass: 4.86732e24, vel: new THREE.Vector3(0, 0, 3.5e-5) }));
+  planets.push(addSphere(0.0063674447, 150, 0, 0, "planet.jpg", { type: "planet", mass: 5.9721986e24, vel: new THREE.Vector3(0, 0, 2.963e-5) }));
+  planets.push(addSphere(0.003386, 227.94, 0, 0, "planet.jpg", { type: "planet", mass: 6.41693e23, vel: new THREE.Vector3(0, 0, 0.0000228175) }));
+  planets.push(addSphere(0.069173, 778.33, 0, 0, "planet.jpg",  { type: "planet", mass: 1.89813e27, vel: new THREE.Vector3(0, 0, 0.0000129824) }));
+  planets.push(addSphere(0.057316, 1429.4, 0, 0, "planet.jpg",  { type: "planet", mass: 5.68319e26, vel: new THREE.Vector3(0, 0, 9.280e-6) }));
+  planets.push(addSphere(0.025266, 2870.99, 0, 0, "planet.jpg",  { type: "planet", mass: 8.68103e25, vel: new THREE.Vector3(0, 0, 6.509e-6) }));
+  planets.push(addSphere(0.024553, 4504, 0, 0, "planet.jpg",  { type: "planet", mass: 1.0241e26, vel: new THREE.Vector3(0, 0, 5.449e-6) }));
+  planets.push(addSphere(0.0024397, 227.94, 0, 0, "mercury.png", { positions: dummy_data, type: "comet", mass: 3.30104e23, vel: new THREE.Vector3(5.449e-6, 5.449e-6, 5.449e-6) }));
 
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 9; i++) {
     addPlanetToFocusOptions(i);
   }
 
