@@ -2,84 +2,97 @@ var fs = require('fs'),
     readline = require('line-by-line'),
     stream = require('stream'),
     moment = require('moment');
-    _ = require('underscore');    
+    _ = require('lodash');    
 
 
-var root = 'data/';
-var dir = 'comet/';
+// var root = 'data/';
+var root = "/data/";
+
+var body;
 
 var count = 0;
 
 var arr = [];
 var currGroup = {};
+var groupCount = 0;
 var withinLn = 0;
 
-var files = fs.readdirSync(root+dir);
-files = _.reject(files, function(f){
-            return f == ".DS_Store"
-        })
 
-files.forEach(function (file) {
-  if (file !== ".DS_STORE") {
-    start = false;
-    end = false;
 
-    fs.readFileSync(root + dir + file).toString().split('\r').forEach(function (line) {
+parseFiles("/data/comet/", "comets.json", false)
+parseFiles("/data/planets/", "planets.json", true)
 
-      if 
-        (line == "$$SOE") {
-         start = true;
-      } 
-      else if 
-        (line == "$$EOE") {
-         end = true;
-      } 
-      else if 
-        (start === true && end === false) {
+function parseFiles(dir, output, summary) {
+  var files = fs.readdirSync(__dirname + dir);
+  files = _.reject(files, function(f){
+              return f == ".DS_Store";
+          });
+
+  files.forEach(function (file) {
+      start = false;
+      end = false;
+      groupCount = 0;
+
+      //can break a lodash each loop
+      _.each(fs.readFileSync(__dirname + dir + file).toString().split('\r') ,function (line) {
 
           if 
-            (withinLn == 0) {
-              // console.log(line)
-              currGroup = {};
-              var date = line.match(/(A\.D\. )(.*\))/);
-              currGroup.time = date[2];
-              withinLn++;
+            (line == "$$SOE") {
+             start = true;
           } 
           else if 
-            (withinLn == 1) {
-              currGroup.pos = line.replace(/  /g, " ").trim().split(" ");
-               withinLn++;              
+            (line == "$$EOE") {
+             end = true;
+          } 
+          else if 
+            (line.indexOf("Target body name") > -1) {
+              body = line.match(/(Target body name: )(.*\))/)[2];
           }
           else if 
-            (withinLn == 2) {
-              currGroup.vel = line.replace(/  /g, " ").trim().split(" ");
-               withinLn++;              
-          }
-          else if 
-            (withinLn == 3) {
-              arr.push(currGroup);
-              withinLn = 0;
-          }
+            (start === true && end === false) {
 
+              if 
+                (withinLn == 0) {
+                  // console.log(line)
+                  currGroup = {};
+                  var date = line.match(/(A\.D\. )(.*\))/);
 
-      } 
-    });
-    // rl.on('end', function() {
-    //   // file.close();
-    //   count++;
-    //   if (count == files.length) {
-    //     fs.writeFileSync(root+"comets.json", JSON.stringify(arr, null, 4));
-    //   }
-    // });
+                  // "time": "2012-Jan-01 00:00:00.0000 (CT)"
+                  // 2014-Jul-06 21:00:00.0000 (CT)
 
-    // rl.on('error', function (err) {
-    //     console.log(err)
-    // });
+                  currGroup.time = moment(date[2].trim(), "YYYY-MMM-DD HH:mm:ss.SSSS ----");
+                  withinLn++;
+              } 
+              else if 
+                (withinLn == 1) {
+                  currGroup.pos = line.replace(/  /g, " ").trim().split(" ");
+                   withinLn++;              
+              }
+              else if 
+                (withinLn == 2) {
+                  currGroup.vel = line.replace(/  /g, " ").trim().split(" ");
+                   withinLn++;              
+              }
+              else if 
+                (withinLn == 3) {
+                  if (summary === true && groupCount > 0) {
+                  } else {
+                    arr.push(currGroup);
+                  }
+                  withinLn = 0;
+                  groupCount++;
+              }
+          } 
+        
+      });
 
       count++;
-      console.log(arr.length, count, files.length)
+
       if (count == files.length) {
-        fs.writeFileSync(root+"comets.json", JSON.stringify(arr, null, 4));
+        var out = {}
+        out[body] = arr;
+        fs.writeFileSync(__dirname + root + output, JSON.stringify(out, null, 4));
       }
-    }
-});
+    
+  });
+}
