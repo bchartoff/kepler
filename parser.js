@@ -1,72 +1,85 @@
 var fs = require('fs'),
-    readline = require('readline'),
+    readline = require('line-by-line'),
     stream = require('stream'),
     moment = require('moment');
+    _ = require('underscore');    
 
-var instream = fs.createReadStream('data/horizons_results-neptune.txt');
-var outstream = new stream;
-outstream.readable = true;
-outstream.writable = true;
 
-var rl = readline.createInterface({
-    input: instream,
-    output: outstream,
-    terminal: false
-});
+var root = 'data/';
+var dir = 'comet/';
 
 var count = 0;
-var start = false;
-var end = false;
+
 var arr = [];
 var currGroup = {};
 var withinLn = 0;
-var lnGroup = 0
 
-rl.on('line', function(line) {
-  if 
-    (line == "$$SOE") {
-     start = true;
-  } 
-  else if 
-    (line == "$$EOE") {
-     end = true;
-  } 
-  else if 
-    (start === true && end !== true) {
+var files = fs.readdirSync(root+dir);
+files = _.reject(files, function(f){
+            return f == ".DS_Store"
+        })
+
+files.forEach(function (file) {
+  if (file !== ".DS_STORE") {
+    start = false;
+    end = false;
+
+    fs.readFileSync(root + dir + file).toString().split('\r').forEach(function (line) {
+
       if 
-        (withinLn == 0) {
-          currGroup = {};
-          var date = line.match(/(A\.D\. )(.*\))/);
-          currGroup.time = date[2];
+        (line == "$$SOE") {
+         start = true;
       } 
       else if 
-        (withinLn == 1) {
-
-          currGroup.pos = line.replace(/  /g, " ").trim().split(" ");
-      }
-      else if 
-        (withinLn == 2) {
-          currGroup.vel = line.replace(/  /g, " ").trim().split(" ");
-      }
-      else if 
-        (withinLn == 3) {
-      }
-      else if 
-        (withinLn == 4) {
-          console.log(JSON.stringify(currGroup))
-          withinLn = 0;
-          lnGroup++;
-          arr.push(currGroup)
+        (line == "$$EOE") {
+         end = true;
       } 
-      withinLn++;
+      else if 
+        (start === true && end === false) {
 
-  } else if 
-    (start === true && end === true) {
-      rl.write(arr);
-  }
+          if 
+            (withinLn == 0) {
+              // console.log(line)
+              currGroup = {};
+              var date = line.match(/(A\.D\. )(.*\))/);
+              currGroup.time = date[2];
+              withinLn++;
+          } 
+          else if 
+            (withinLn == 1) {
+              currGroup.pos = line.replace(/  /g, " ").trim().split(" ");
+               withinLn++;              
+          }
+          else if 
+            (withinLn == 2) {
+              currGroup.vel = line.replace(/  /g, " ").trim().split(" ");
+               withinLn++;              
+          }
+          else if 
+            (withinLn == 3) {
+              arr.push(currGroup);
+              withinLn = 0;
+          }
 
-  count++;
-    //Do your stuff ...
-    //Then write to outstream
-    // rl.write(null, {ctrl: true, name: 'u'});
+
+      } 
+    });
+    // rl.on('end', function() {
+    //   // file.close();
+    //   count++;
+    //   if (count == files.length) {
+    //     fs.writeFileSync(root+"comets.json", JSON.stringify(arr, null, 4));
+    //   }
+    // });
+
+    // rl.on('error', function (err) {
+    //     console.log(err)
+    // });
+
+      count++;
+      console.log(arr.length, count, files.length)
+      if (count == files.length) {
+        fs.writeFileSync(root+"comets.json", JSON.stringify(arr, null, 4));
+      }
+    }
 });

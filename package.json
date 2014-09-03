@@ -13,6 +13,8 @@
     "morgan": "~1.2.3",
     "serve-favicon": "~2.0.1",
     "debug": "~1.0.4",
-    "ejs": "~1.0.0"
+    "ejs": "~1.0.0",
+    "line-by-line": "~0.1.1",
+    "underscore": "~1.7.0"
   }
 }
