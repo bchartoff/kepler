@@ -16,13 +16,13 @@ var arr = [];
 var currGroup = {};
 var groupCount = 0;
 var withinLn = 0;
-
+var groupOut = {};
 
 
 parseFiles("/data/comet/", "comets.json", false)
 parseFiles("/data/planets/", "planets.json", true)
 
-function parseFiles(dir, output, summary) {
+function parseFiles(dir, output, groupSummary) {
   var files = fs.readdirSync(__dirname + dir);
   files = _.reject(files, function(f){
               return f == ".DS_Store";
@@ -33,7 +33,7 @@ function parseFiles(dir, output, summary) {
       end = false;
       groupCount = 0;
 
-      //can break a lodash each loop
+      //can break a lodash each loop?
       _.each(fs.readFileSync(__dirname + dir + file).toString().split('\r') ,function (line) {
 
           if 
@@ -75,10 +75,7 @@ function parseFiles(dir, output, summary) {
               }
               else if 
                 (withinLn == 3) {
-                  if (summary === true && groupCount > 0) {
-                  } else {
-                    arr.push(currGroup);
-                  }
+                  arr.push(currGroup);
                   withinLn = 0;
                   groupCount++;
               }
@@ -88,11 +85,23 @@ function parseFiles(dir, output, summary) {
 
       count++;
 
+      if (groupSummary === true) {
+        groupOut[body] = arr[0];
+      } 
+
       if (count == files.length) {
-        var out = {}
-        out[body] = arr;
-        fs.writeFileSync(__dirname + root + output, JSON.stringify(out, null, 4));
+          var out = {}
+          out[body] = arr;
+          if (groupSummary === true) {
+            var first = _.first(groupOut);
+            fs.writeFileSync(__dirname + root + output, JSON.stringify(groupOut, null, 4));
+
+          } else {
+            fs.writeFileSync(__dirname + root + output, JSON.stringify(out, null, 4));
+          }
+        
       }
+
     
   });
 }
