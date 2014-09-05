@@ -25,7 +25,7 @@ var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20
 // Astronomy.
 var G = 6.67384e-11; // m3 kg-1 s-2
 var SEC_PER_STEP = 8;
-var COMET_TIME_STEP = 31557600//86400 //seconds per day
+var COMET_TIME_STEP = 3600//86400 //seconds per day
 var STEPS_PER_FRAME = 10000;
 var METERS_PER_UNIT = 1000000000;
 var MAX_TRAIL_VERTICES = 400;
@@ -34,7 +34,8 @@ var GHOST_DISTANCE_SCALE = 80;
 var MAX_GHOST_OPACITY = 0.15;
 var PAUSED = false;
 var CURRENT_TIME = 0; //January 1st 2012 at midnight (start of day)
-var END_TIME = 126230400 //86400 * 365.25 * 4
+var OFFSET_TIME = 1325386800;
+var END_TIME = 1419994800 //86400 * 365.25 * 4
 
 function createCamera() {
   camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
@@ -128,10 +129,6 @@ function updateCometVelocity(planet){
   var speed;
   for(var i=0; i < STEPS_PER_FRAME; i++) {
     interval = getInterval(planet);
-    //console.log("int",interval)
-    // console.log(interval);
-  //  console.log(CURRENT_TIME, interval[0])
-    //console.log(interval)
     p1 = new THREE.Vector3(interval[0][0],interval[0][1],interval[0][2]);
     p2 = new THREE.Vector3(interval[1][0],interval[1][1],interval[1][2]);
     speed = getDistance(p2,p1)/ (COMET_TIME_STEP)
@@ -156,8 +153,25 @@ function updateCometVelocity(planet){
 function getInterval(planet){
   // console.log(((Math.floor(CURRENT_TIME / COMET_TIME_STEP)) * COMET_TIME_STEP).toString(),
   // (((Math.floor(CURRENT_TIME / COMET_TIME_STEP))+1) * COMET_TIME_STEP).toString());
-  return [planet.astro.positions[((Math.floor(CURRENT_TIME / COMET_TIME_STEP)) * COMET_TIME_STEP).toString()],
-  planet.astro.positions[(((Math.floor(CURRENT_TIME / COMET_TIME_STEP))+1) * COMET_TIME_STEP).toString()]]; 
+  var data = planet.astro.positions["Siding Spring (C/2013 A1)"];
+  var tmp1 = Math.floor(CURRENT_TIME / COMET_TIME_STEP)
+  var t1 = ((Math.floor(CURRENT_TIME / COMET_TIME_STEP)) * COMET_TIME_STEP)// + OFFSET_TIME
+  var t2 = ((Math.floor(CURRENT_TIME / COMET_TIME_STEP)+1) * COMET_TIME_STEP)// + OFFSET_TIME
+  console.log(t1,t2,tmp1)
+
+  for(var i=0;i<data.length;i++){
+        var obj = data[i];
+        for(var key in obj){
+            var attrName = key;
+            var attrValue = obj[key];
+
+            if (attrName == "time" && attrValue == t1){
+              var p1 = obj["pos"].map(Number);
+              var p2 = data[i+1]["pos"].map(Number);
+            }
+        }
+  }
+  
 }
 
 function leaveTrail(sphere) {
@@ -218,7 +232,7 @@ var FOCUS, focusVec = new THREE.Vector3();
 
 function animate() {
   stats.begin();
-  if (CURRENT_TIME >= END_TIME){ PAUSED == true; }
+  if (CURRENT_TIME + OFFSET_TIME >= END_TIME){ PAUSED == true; }
 
   // render texture
   renderer.render(scene, camera);
@@ -331,6 +345,9 @@ document.getElementById('form').onsubmit = function(e) {
 
 function simulateHome() {
   sun = addSphere(0.6955, 0, 0, 0, "bhushan.jpg", { mass: 1.988435e30 });
+  var tmp;
+
+
   var dummy_data =
   {
     "0" : [227.94, 0, 0],
@@ -349,7 +366,12 @@ function simulateHome() {
   planets.push(addSphere(0.057316, 1429.4, 0, 0, "planet.jpg",  { type: "planet", mass: 5.68319e26, vel: new THREE.Vector3(0, 0, 9.280e-6) }));
   planets.push(addSphere(0.025266, 2870.99, 0, 0, "planet.jpg",  { type: "planet", mass: 8.68103e25, vel: new THREE.Vector3(0, 0, 6.509e-6) }));
   planets.push(addSphere(0.024553, 4504, 0, 0, "planet.jpg",  { type: "planet", mass: 1.0241e26, vel: new THREE.Vector3(0, 0, 5.449e-6) }));
-  planets.push(addSphere(0.0024397, 227.94, 0, 0, "planet.jpg", { positions: dummy_data, type: "comet", mass: 3.30104e23, vel: new THREE.Vector3(4.74e-5,0, 0) }));
+
+  $.getJSON("data/comets.json", function(data) {
+    planets.push(addSphere(0.0024397, 227.94, 0, 0, "planet.jpg", { positions: data, type: "comet", mass: 3.30104e23, vel: new THREE.Vector3(4.74e-5,0, 0) }));
+// data is a JavaScript object now. Handle it as such
+  });
+
 
   for (var i = 0; i < 9; i++) {
     addPlanetToFocusOptions(i);
