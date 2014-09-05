@@ -60,7 +60,7 @@ function parseFiles(dir, output, groupSummary) {
                   // "time": "2012-Jan-01 00:00:00.0000 (CT)"
                   // 2014-Jul-06 21:00:00.0000 (CT)
 
-                  currGroup.time = moment(date[2].trim(), "YYYY-MMM-DD HH:mm:ss.SSSS ----");
+                  currGroup.time = moment(date[2].trim(), "YYYY-MMM-DD HH:mm:ss.SSSS ----").unix() / 1000;
                   withinLn++;
               } 
               else if 
